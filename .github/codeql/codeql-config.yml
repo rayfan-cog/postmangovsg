@@ -17,8 +17,8 @@ query-filters:
   - exclude:
       tags: exclude-from-incremental
 paths-ignore:
-  - '**/test/**'
-  - '**/tests/**'
-  - '**/__test__/**'
-  - '**/__tests__/**'
-  - '**/*.test.*'
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/__test__/**"
+  - "**/__tests__/**"
+  - "**/*.test.*"

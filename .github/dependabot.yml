@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -25,7 +25,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -35,7 +35,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -45,7 +45,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -55,7 +55,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -65,7 +65,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -75,7 +75,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -85,7 +85,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -95,7 +95,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -105,7 +105,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -115,7 +115,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -125,7 +125,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -135,7 +135,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-      time: '09:00'
+      time: "09:00"
       timezone: Asia/Singapore
     open-pull-requests-limit: 3
     commit-message:
@@ -145,7 +145,7 @@ updates:
       npm-minor-and-patch:
         applies-to: version-updates
         patterns:
-          - '*'
+          - "*"
         update-types:
           - minor
           - patch
@@ -161,7 +161,7 @@ updates:
     groups:
       github-actions:
         patterns:
-          - '*'
+          - "*"
 
   - package-ecosystem: docker
     directories:
@@ -176,10 +176,10 @@ updates:
     groups:
       docker-base-images:
         patterns:
-          - '*'
+          - "*"
     ignore:
       # Node major upgrades are a deliberate migration (.nvmrc, CI, Docker).
-      - dependency-name: '*/node'
+      - dependency-name: "*/node"
         update-types:
           - version-update:semver-major
       - dependency-name: node
