@@ -2,11 +2,14 @@ import axios from 'axios'
 
 import {
   Campaign,
+  CampaignApiResponse,
+  CampaignJobApiResponse,
   CampaignRecipient,
   CampaignStats,
   ChannelType,
   EmailCampaign,
   EmailCampaignRecipient,
+  EmailCampaignRecipientApiResponse,
   GovsgCampaign,
   GovsgCampaignRecipient,
   Ordering,
@@ -19,13 +22,13 @@ import {
   TelegramCampaignRecipient,
 } from 'classes'
 
+type CampaignWithJobsApiResponse = CampaignApiResponse & {
+  job_queue: CampaignJobApiResponse[]
+}
+
 function getJobTimestamps(
-  jobs: Array<{
-    sent_at: string
-    status_updated_at: string
-    visible_at: string
-  }>
-): { sentAt: string; statusUpdatedAt: string; visibleAt: string } {
+  jobs: CampaignJobApiResponse[]
+): Pick<CampaignApiResponse, 'sentAt' | 'statusUpdatedAt' | 'visibleAt'> {
   const jobsSentAt = jobs.map((x) => x.sent_at).sort()
   const jobsUpdatedAt = jobs.map((x) => x.status_updated_at).sort()
   const jobsVisibleAt = jobs.map((x) => x.visible_at).sort()
@@ -51,19 +54,21 @@ export async function getCampaigns(params: {
 }> {
   return axios.get('/campaigns', { params }).then((response) => {
     const { campaigns, total_count } = response.data
-    const campaignList: Campaign[] = campaigns.map((data: any) => {
-      const { sentAt, statusUpdatedAt, visibleAt } = getJobTimestamps(
-        data.job_queue
-      )
-      const details = {
-        ...data,
-        sentAt,
-        statusUpdatedAt,
-        visibleAt,
-      }
+    const campaignList: Campaign[] = campaigns.map(
+      (data: CampaignWithJobsApiResponse) => {
+        const { sentAt, statusUpdatedAt, visibleAt } = getJobTimestamps(
+          data.job_queue
+        )
+        const details = {
+          ...data,
+          sentAt,
+          statusUpdatedAt,
+          visibleAt,
+        }
 
-      return new Campaign(details)
-    })
+        return new Campaign(details)
+      }
+    )
 
     return {
       campaigns: campaignList,
@@ -119,7 +124,7 @@ export async function getCampaignDetails(
   campaignId: number
 ): Promise<EmailCampaign | SMSCampaign | TelegramCampaign | GovsgCampaign> {
   return axios.get(`/campaign/${campaignId}`).then((response) => {
-    const campaign = response.data
+    const campaign: CampaignWithJobsApiResponse = response.data
     const { sentAt, visibleAt } = getJobTimestamps(campaign.job_queue)
     const details = {
       ...campaign,
@@ -201,20 +206,22 @@ export async function exportCampaignStats(
   type: ChannelType
 ): Promise<Array<CampaignRecipient>> {
   return axios.get(`/campaign/${campaignId}/export`).then((response) => {
-    const campaignRecipients = response.data?.map((record: any) => {
-      switch (type) {
-        case ChannelType.Email:
-          return new EmailCampaignRecipient(record)
-        case ChannelType.SMS:
-          return new SMSCampaignRecipient(record)
-        case ChannelType.Telegram:
-          return new TelegramCampaignRecipient(record)
-        case ChannelType.Govsg:
-          return new GovsgCampaignRecipient(record)
-        default:
-          throw new Error('Invalid channel type')
+    const campaignRecipients = response.data?.map(
+      (record: EmailCampaignRecipientApiResponse) => {
+        switch (type) {
+          case ChannelType.Email:
+            return new EmailCampaignRecipient(record)
+          case ChannelType.SMS:
+            return new SMSCampaignRecipient(record)
+          case ChannelType.Telegram:
+            return new TelegramCampaignRecipient(record)
+          case ChannelType.Govsg:
+            return new GovsgCampaignRecipient(record)
+          default:
+            throw new Error('Invalid channel type')
+        }
       }
-    })
+    )
 
     return campaignRecipients
   })

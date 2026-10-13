@@ -1,6 +1,10 @@
 import { t } from '@lingui/macro'
 
-import { Campaign, CampaignRecipient } from './Campaign'
+import {
+  Campaign,
+  CampaignRecipient,
+  ChannelCampaignApiResponse,
+} from './Campaign'
 
 export enum SMSProgress {
   CreateTemplate,
@@ -13,6 +17,13 @@ export interface SMSPreview {
   body: string
 }
 
+export interface SMSCampaignApiResponse extends ChannelCampaignApiResponse {
+  sms_templates?: {
+    body?: string
+    params?: Array<string>
+  }
+}
+
 export class SMSCampaign extends Campaign {
   body: string
   params: Array<string>
@@ -21,13 +32,13 @@ export class SMSCampaign extends Campaign {
   hasCredential: boolean
   progress: SMSProgress = SMSProgress.CreateTemplate
 
-  constructor(input: any) {
+  constructor(input: SMSCampaignApiResponse) {
     super(input)
-    this.body = input['sms_templates']?.body
-    this.params = input['sms_templates']?.params
-    this.csvFilename = input['csv_filename']
-    this.numRecipients = input['num_recipients']
-    this.hasCredential = input['has_credential']
+    this.body = input.sms_templates?.body as string
+    this.params = input.sms_templates?.params as Array<string>
+    this.csvFilename = input.csv_filename as string
+    this.numRecipients = input.num_recipients as number
+    this.hasCredential = input.has_credential as boolean
     this.setProgress()
   }
 

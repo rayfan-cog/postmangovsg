@@ -1,6 +1,10 @@
 import { t } from '@lingui/macro'
 
-import { Campaign, CampaignRecipient } from './Campaign'
+import {
+  Campaign,
+  CampaignRecipient,
+  ChannelCampaignApiResponse,
+} from './Campaign'
 
 export enum TelegramProgress {
   CreateTemplate,
@@ -13,6 +17,15 @@ export interface TelegramPreview {
   body: string
 }
 
+export interface TelegramCampaignApiResponse
+  extends ChannelCampaignApiResponse {
+  telegram_templates?: {
+    body?: string
+    params?: Array<string>
+  }
+  preview?: string
+}
+
 export class TelegramCampaign extends Campaign {
   body: string
   params: Array<string>
@@ -22,14 +35,14 @@ export class TelegramCampaign extends Campaign {
   hasCredential: boolean
   progress: TelegramProgress = TelegramProgress.CreateTemplate
 
-  constructor(input: any) {
+  constructor(input: TelegramCampaignApiResponse) {
     super(input)
-    this.body = input['telegram_templates']?.body
-    this.params = input['telegram_templates']?.params
-    this.csvFilename = input['csv_filename']
-    this.numRecipients = input['num_recipients']
-    this.preview = input['preview']
-    this.hasCredential = input['has_credential']
+    this.body = input.telegram_templates?.body as string
+    this.params = input.telegram_templates?.params as Array<string>
+    this.csvFilename = input.csv_filename as string
+    this.numRecipients = input.num_recipients as number
+    this.preview = input.preview as string
+    this.hasCredential = input.has_credential as boolean
     this.setProgress()
   }
 

@@ -38,6 +38,63 @@ export const channelIcons = {
   [ChannelType.Govsg]: 'bxl-whatsapp',
 }
 
+export interface CampaignJobApiResponse {
+  status: string
+  sent_at?: string
+  status_updated_at?: string
+  visible_at?: string
+}
+
+// Fields are optional because constructors are also called with partial
+// payloads (e.g. `new Campaign({})` defaults, the create-campaign response).
+export interface CampaignApiResponse {
+  id?: number
+  name?: string
+  type?: string
+  created_at?: string | Date
+  halted?: boolean
+  job_queue?: CampaignJobApiResponse[]
+  is_csv_processing?: boolean
+  protect?: boolean
+  redacted?: boolean
+  demo_message_limit?: number | null
+  cost_per_message?: number
+  // Not sent by the API: derived from job_queue by the service layer
+  sentAt?: string
+  statusUpdatedAt?: string
+  visibleAt?: string
+}
+
+// Channel-specific payloads also carry these recipient/credential fields
+export interface ChannelCampaignApiResponse extends CampaignApiResponse {
+  csv_filename?: string | null
+  num_recipients?: number | null
+  has_credential?: boolean
+}
+
+export interface CampaignStatsApiResponse {
+  error?: number | string
+  unsent?: number | string
+  sent?: number | string
+  invalid?: number
+  status?: Status
+  delivered?: number
+  read?: number
+  status_updated_at?: string
+  updated_at?: string
+  halted?: boolean
+  wait_time?: number
+  unsubscribed?: number
+  visible_at?: string
+}
+
+export interface CampaignRecipientApiResponse {
+  recipient?: string
+  status?: string
+  error_code?: string | null
+  updated_at?: string
+}
+
 export class Campaign {
   id: number
   name: string
@@ -54,22 +111,22 @@ export class Campaign {
   scheduledAt?: Date
   visibleAt?: string
 
-  constructor(input: any) {
-    this.id = input['id']
-    this.name = input['name']
-    this.type = input['type']
-    this.createdAt = input['created_at']
-    this.status = input['halted']
+  constructor(input: CampaignApiResponse) {
+    this.id = input.id as number
+    this.name = input.name as string
+    this.type = input.type as ChannelType
+    this.createdAt = input.created_at as string
+    this.status = input.halted
       ? Status.Halted
-      : this.getStatus(input['job_queue'])
-    this.isCsvProcessing = input['is_csv_processing']
-    this.sentAt = input['sentAt']
-    this.statusUpdatedAt = input['statusUpdatedAt']
-    this.protect = input['protect']
-    this.redacted = input['redacted']
-    this.demoMessageLimit = input['demo_message_limit']
-    this.costPerMessage = input['cost_per_message']
-    this.visibleAt = input['visibleAt']
+      : this.getStatus(input.job_queue as CampaignJobApiResponse[])
+    this.isCsvProcessing = input.is_csv_processing as boolean
+    this.sentAt = input.sentAt
+    this.statusUpdatedAt = input.statusUpdatedAt
+    this.protect = input.protect as boolean
+    this.redacted = input.redacted as boolean
+    this.demoMessageLimit = input.demo_message_limit as number | null
+    this.costPerMessage = input.cost_per_message
+    this.visibleAt = input.visibleAt
     // override sentAt if it's a scheduled campaign
     if (this.visibleAt) {
       if (new Date(this.visibleAt) > new Date()) {
@@ -80,15 +137,15 @@ export class Campaign {
       }
     }
     if (this.status === Status.Scheduled) {
-      const jobs = input['job_queue'] as Array<{ visible_at: string }>
+      const jobs = input.job_queue as CampaignJobApiResponse[]
       const jobsVisibleTime = jobs
-        .map(({ visible_at: visibleAt }) => new Date(visibleAt))
+        .map(({ visible_at: visibleAt }) => new Date(visibleAt as string))
         .sort()
       this.scheduledAt = jobsVisibleTime[0]
     }
   }
 
-  getStatus(jobs: Array<{ status: string; visible_at?: string }>): Status {
+  getStatus(jobs: CampaignJobApiResponse[]): Status {
     if (jobs) {
       const jobSet = new Set(jobs.map((x) => x.status))
       // TODO: frontend and backend are misaligned in how they determine if a campaign has been sent (part 2/2)
@@ -129,20 +186,20 @@ export class CampaignStats {
   unsubscribed?: number
   visibleAt?: string
 
-  constructor(input: any) {
-    this.error = +input['error']
-    this.unsent = +input['unsent']
-    this.sent = +input['sent']
-    this.invalid = input['invalid']
-    this.status = input['status']
-    this.delivered = input['delivered'] || 0
-    this.read = input['read'] || 0
-    this.statusUpdatedAt = input['status_updated_at']
-    this.updatedAt = input['updated_at']
-    this.halted = input['halted']
-    this.waitTime = input['wait_time']
-    this.unsubscribed = input['unsubscribed']
-    this.visibleAt = input['visible_at']
+  constructor(input: CampaignStatsApiResponse) {
+    this.error = +(input.error as number | string)
+    this.unsent = +(input.unsent as number | string)
+    this.sent = +(input.sent as number | string)
+    this.invalid = input.invalid as number
+    this.status = input.status as Status
+    this.delivered = input.delivered || 0
+    this.read = input.read || 0
+    this.statusUpdatedAt = input.status_updated_at as string
+    this.updatedAt = input.updated_at as string
+    this.halted = input.halted
+    this.waitTime = input.wait_time
+    this.unsubscribed = input.unsubscribed
+    this.visibleAt = input.visible_at
   }
 }
 
@@ -152,11 +209,11 @@ export abstract class CampaignRecipient {
   errorCode: string
   updatedAt: string
 
-  constructor(input: any) {
-    this.recipient = input['recipient']
-    this.status = input['status']
-    this.errorCode = this.formatErrorCode(input['error_code'])
-    this.updatedAt = moment(input['updated_at']).format('LLL').replace(',', '')
+  constructor(input: CampaignRecipientApiResponse) {
+    this.recipient = input.recipient as string
+    this.status = input.status as string
+    this.errorCode = this.formatErrorCode(input.error_code as string)
+    this.updatedAt = moment(input.updated_at).format('LLL').replace(',', '')
   }
 
   protected abstract formatErrorCode(errorCode: string): string

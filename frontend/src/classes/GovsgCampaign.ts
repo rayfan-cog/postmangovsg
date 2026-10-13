@@ -1,6 +1,10 @@
 import { GovsgTemplateLanguageMetadata } from '@shared/clients/whatsapp-client.class/types'
 
-import { Campaign, CampaignRecipient } from './Campaign'
+import {
+  Campaign,
+  CampaignRecipient,
+  ChannelCampaignApiResponse,
+} from './Campaign'
 
 export enum GovsgProgress {
   PickTemplate,
@@ -20,6 +24,19 @@ export type GovsgTemplateParamMetadata = {
   defaultFromMetaField?: string
 }
 
+type GovsgParamMetadata = Record<string, GovsgTemplateParamMetadata>
+
+export interface GovsgCampaignApiResponse extends ChannelCampaignApiResponse {
+  govsg_templates?: {
+    id?: number
+    body?: string
+    params?: Array<string> | null
+    for_single_recipient?: boolean | null
+    param_metadata?: GovsgParamMetadata
+    languages?: Array<GovsgTemplateLanguageMetadata>
+  }
+}
+
 export class GovsgCampaign extends Campaign {
   templateId: number
   body: string
@@ -28,19 +45,20 @@ export class GovsgCampaign extends Campaign {
   numRecipients: number
   progress: GovsgProgress = GovsgProgress.PickTemplate
   forSingleRecipient: boolean | null
-  paramMetadata: Record<string, GovsgTemplateParamMetadata>
+  paramMetadata: GovsgParamMetadata
   languages: Array<GovsgTemplateLanguageMetadata>
 
-  constructor(input: any) {
+  constructor(input: GovsgCampaignApiResponse) {
     super(input)
-    this.templateId = input['govsg_templates']?.id
-    this.body = input['govsg_templates']?.body
-    this.params = input['govsg_templates']?.params
-    this.csvFilename = input['csv_filename']
-    this.numRecipients = input['num_recipients']
-    this.forSingleRecipient = input['govsg_templates']?.for_single_recipient
-    this.paramMetadata = input['govsg_templates']?.param_metadata
-    this.languages = input['govsg_templates']?.languages ?? []
+    const template = input.govsg_templates
+    this.templateId = template?.id as number
+    this.body = template?.body as string
+    this.params = template?.params as Array<string>
+    this.csvFilename = input.csv_filename as string
+    this.numRecipients = input.num_recipients as number
+    this.forSingleRecipient = template?.for_single_recipient as boolean | null
+    this.paramMetadata = template?.param_metadata as GovsgParamMetadata
+    this.languages = template?.languages ?? []
     this.setProgress()
   }
   setProgress() {
