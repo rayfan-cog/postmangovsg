@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/browser'
 import axios from 'axios'
 
+import { statusErrorHandler } from './error-handler'
 import { setGAUserId } from './ga.service'
 
 async function getOtpWithEmail(email: string): Promise<void> {
@@ -9,7 +10,7 @@ async function getOtpWithEmail(email: string): Promise<void> {
       email,
     })
   } catch (e) {
-    errorHandler(e)
+    statusErrorHandler(e)
   }
 }
 
@@ -20,7 +21,7 @@ async function loginWithOtp(email: string, otp: string): Promise<void> {
       otp,
     })
   } catch (e) {
-    errorHandler(e, {
+    statusErrorHandler(e, {
       400: 'Invalid OTP format, enter an 8-character code',
       401: 'Invalid OTP',
     })
@@ -34,7 +35,7 @@ async function loginWithOneGovSg(
   try {
     await axios.post('/auth/one-gov-sg/callback', params)
   } catch (e) {
-    errorHandler(e)
+    statusErrorHandler(e)
   }
 }
 
@@ -71,20 +72,6 @@ function setUserAnalytics(user?: { email: string; id: number } | null) {
       : null
     scope.setUser(scopeUser)
   })
-}
-
-function errorHandler(e: unknown, customHandlers: any = {}) {
-  if (axios.isAxiosError(e) && e.response && e.response.status) {
-    const code = e.response.status
-    if (customHandlers[code]) {
-      throw new Error(customHandlers[code])
-    } else if (e.response.data?.message) {
-      throw new Error(e.response.data.message)
-    } else {
-      throw new Error(e.response.statusText)
-    }
-  }
-  throw new Error(`${e}`)
 }
 
 export {
