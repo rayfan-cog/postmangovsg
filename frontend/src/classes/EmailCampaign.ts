@@ -2,7 +2,12 @@ import { i18n } from '@lingui/core'
 import { t } from '@lingui/macro'
 import { get } from 'lodash'
 
-import { Campaign, CampaignRecipient } from './Campaign'
+import {
+  Campaign,
+  CampaignRecipient,
+  CampaignRecipientApiResponse,
+  ChannelCampaignApiResponse,
+} from './Campaign'
 
 const emailErrors = {
   'Hard bounce': t`errors.email.hardBounce`,
@@ -26,6 +31,34 @@ export interface EmailPreview {
   from: string
 }
 
+export interface EmailCampaignApiResponse extends ChannelCampaignApiResponse {
+  email_templates?: {
+    body?: string
+    params?: Array<string>
+    subject?: string
+    reply_to?: string | null
+    from?: string
+    show_logo?: boolean
+    themed_body?: string
+  }
+  user?: {
+    domain?: {
+      agency?: {
+        name?: string
+        logo_uri?: string
+      }
+    }
+  }
+  should_bcc_to_me?: boolean
+}
+
+// Keys are flattened by the export endpoint's Sequelize `raw: true` query
+export interface EmailCampaignRecipientApiResponse
+  extends CampaignRecipientApiResponse {
+  'unsubscriber.recipient'?: string
+  'unsubscriber.reason'?: string | null
+}
+
 export class EmailCampaign extends Campaign {
   body: string
   params: Array<string>
@@ -42,20 +75,20 @@ export class EmailCampaign extends Campaign {
   progress: EmailProgress = EmailProgress.CreateTemplate
   shouldBccToMe: boolean
 
-  constructor(input: any) {
+  constructor(input: EmailCampaignApiResponse) {
     super(input)
-    this.body = input['email_templates']?.body
-    this.params = input['email_templates']?.params
-    this.subject = input['email_templates']?.subject
-    this.replyTo = input['email_templates']?.reply_to
-    this.from = input['email_templates']?.from
-    this.showLogo = input['email_templates']?.show_logo
-    this.themedBody = input['email_templates']?.themed_body
-    this.csvFilename = input['csv_filename']
-    this.numRecipients = input['num_recipients']
-    this.hasCredential = input['has_credential']
-    this.agencyName = input['user']?.domain?.agency?.name
-    this.agencyLogoURI = input['user']?.domain?.agency?.logo_uri
+    this.body = input.email_templates?.body as string
+    this.params = input.email_templates?.params as Array<string>
+    this.subject = input.email_templates?.subject as string
+    this.replyTo = input.email_templates?.reply_to as string | null
+    this.from = input.email_templates?.from as string
+    this.showLogo = input.email_templates?.show_logo as boolean
+    this.themedBody = input.email_templates?.themed_body as string
+    this.csvFilename = input.csv_filename as string
+    this.numRecipients = input.num_recipients as number
+    this.hasCredential = input.has_credential as boolean
+    this.agencyName = input.user?.domain?.agency?.name as string
+    this.agencyLogoURI = input.user?.domain?.agency?.logo_uri as string
     this.setProgress()
     this.shouldBccToMe = input.should_bcc_to_me || false
   }
@@ -77,9 +110,9 @@ export class EmailCampaignRecipient extends CampaignRecipient {
   unsubscriber: string
   unsubscribeReason: string
 
-  constructor(input: any) {
+  constructor(input: EmailCampaignRecipientApiResponse) {
     super(input)
-    this.unsubscriber = input['unsubscriber.recipient']
+    this.unsubscriber = input['unsubscriber.recipient'] as string
     this.unsubscribeReason = input['unsubscriber.reason'] || ''
   }
 
