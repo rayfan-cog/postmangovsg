@@ -2,6 +2,8 @@ import axios from 'axios'
 
 import type { ChannelType } from 'classes'
 
+import { errorHandler } from './error-handler'
+
 export interface UserCredential {
   label: string
   type: ChannelType
@@ -81,19 +83,6 @@ async function updateAnnouncementVersion(
   } catch (e) {
     errorHandler(e, 'Error updating announcement version')
   }
-}
-
-function errorHandler(e: unknown, defaultMsg: string): never {
-  console.error(e)
-  if (
-    axios.isAxiosError(e) &&
-    e.response &&
-    e.response.data &&
-    e.response.data.message
-  ) {
-    throw new Error(e.response.data.message)
-  }
-  throw new Error(defaultMsg)
 }
 
 export {

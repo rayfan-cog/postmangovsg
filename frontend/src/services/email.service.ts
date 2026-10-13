@@ -2,6 +2,8 @@ import axios from 'axios'
 
 import type { EmailPreview } from 'classes'
 
+import { errorHandler } from './error-handler'
+
 export async function saveTemplate(
   campaignId: number,
   subject: string,
@@ -85,17 +87,4 @@ export async function verifyFromAddress(
   } catch (e) {
     errorHandler(e, 'Error verifying From Address.')
   }
-}
-
-function errorHandler(e: unknown, defaultMsg: string): never {
-  console.error(e)
-  if (
-    axios.isAxiosError(e) &&
-    e.response &&
-    e.response.data &&
-    e.response.data.message
-  ) {
-    throw new Error(e.response.data.message)
-  }
-  throw new Error(defaultMsg)
 }

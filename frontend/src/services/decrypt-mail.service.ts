@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 import { decryptData, hashPassword } from './crypto.service'
+import { errorHandler } from './error-handler'
 import { hydrateTemplate } from './validate-csv.service'
 
 /**
@@ -41,17 +42,4 @@ async function getEncryptedPayload(
   } catch (e) {
     errorHandler(e, 'Please try again later.')
   }
-}
-
-function errorHandler(e: unknown, defaultMsg: string): never {
-  console.error(e)
-  if (
-    axios.isAxiosError(e) &&
-    e.response &&
-    e.response.data &&
-    e.response.data.message
-  ) {
-    throw new Error(e.response.data.message)
-  }
-  throw new Error(defaultMsg)
 }

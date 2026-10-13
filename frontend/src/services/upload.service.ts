@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
 
 // require buffer with trailing slash to ensure use of the npm module named buffer
 // instead of the node.js core module named buffer
@@ -8,6 +8,8 @@ import Papa from 'papaparse'
 import SparkMD5 from 'spark-md5'
 
 import type { EmailPreview, SMSPreview } from 'classes'
+
+import { errorHandler } from './error-handler'
 
 const MD5_CHUNK_SIZE = 5000000 // 5MB
 
@@ -313,17 +315,4 @@ export async function completeMultiPartUpload({
   } catch (e) {
     errorHandler(e, 'Error completing multipart upload')
   }
-}
-
-function errorHandler(e: unknown, defaultMsg?: string): never {
-  console.error(e)
-  if (
-    axios.isAxiosError(e) &&
-    e.response &&
-    e.response.data &&
-    e.response.data.message
-  ) {
-    throw new Error(e.response.data.message)
-  }
-  throw new Error(defaultMsg || (e as AxiosError).response?.statusText)
 }

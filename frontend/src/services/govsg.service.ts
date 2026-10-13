@@ -3,6 +3,8 @@ import axios from 'axios'
 
 import { GovsgTemplateParamMetadata } from 'classes'
 
+import { errorHandler } from './error-handler'
+
 type GovsgTemplate = {
   id: number
   name: string
@@ -61,17 +63,4 @@ export async function sendSingleRecipientCampaign(
     language_code: params.language,
     params,
   })
-}
-
-function errorHandler(e: unknown, defaultMsg: string): never {
-  console.error(e)
-  if (
-    axios.isAxiosError(e) &&
-    e.response &&
-    e.response.data &&
-    e.response.data.message
-  ) {
-    throw new Error(e.response.data.message)
-  }
-  throw new Error(defaultMsg)
 }
