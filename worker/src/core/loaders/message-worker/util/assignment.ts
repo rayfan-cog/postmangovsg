@@ -115,10 +115,14 @@ const insertNewWorker = (
     })
 }
 
+const MAX_ASSIGNMENT_ATTEMPTS = 10
+
 const assignment = async (
   connection: Sequelize,
-  workerId: string
+  workerId: string,
+  attempt = 1
 ): Promise<boolean> => {
+  const logMeta = { workerId, attempt, action: 'assignment' }
   try {
     let deadWorkers: string[] = []
     if (config.get('env') !== 'development') {
@@ -126,27 +130,34 @@ const assignment = async (
     } else {
       logger.info({
         message: 'Dev env - assignment - assumed no dead workers',
-        workerId,
-        action: 'assignment',
+        ...logMeta,
       })
     }
     if (deadWorkers.length === 0) {
       return insertNewWorker(connection, workerId)
-    } else {
-      const replaced: boolean = await replaceDeadWorker(
-        connection,
-        workerId,
-        deadWorkers[0]
-      )
-      return (
-        replaced ||
-        // Try to assign again, after waiting for some time. Some other task probably replaced that dead worker already
-        new Promise((resolve) =>
-          setTimeout(resolve, Math.random() * 2000)
-        ).then(() => assignment(connection, workerId))
-      )
     }
+    const replaced: boolean = await replaceDeadWorker(
+      connection,
+      workerId,
+      deadWorkers[0]
+    )
+    if (replaced) {
+      return true
+    }
+    if (attempt >= MAX_ASSIGNMENT_ATTEMPTS) {
+      logger.error({
+        message: 'Exceeded max assignment attempts',
+        maxAttempts: MAX_ASSIGNMENT_ATTEMPTS,
+        ...logMeta,
+      })
+      return false
+    }
+    // Try to assign again, after waiting for some time. Some other task probably replaced that dead worker already
+    logger.info({ message: 'Retrying assignment', ...logMeta })
+    await new Promise((resolve) => setTimeout(resolve, Math.random() * 2000))
+    return assignment(connection, workerId, attempt + 1)
   } catch (err) {
+    logger.error({ message: 'Failed to assign worker', error: err, ...logMeta })
     return false
   }
 }
