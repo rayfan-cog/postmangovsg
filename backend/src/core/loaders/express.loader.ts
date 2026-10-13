@@ -13,6 +13,7 @@ import {
   isOneGovSgCallbackPath,
   redactOneGovSgSentryEvent,
 } from '@core/utils/one-gov-sg-logging'
+import { redactSensitiveBodyFields } from '@core/utils/request-logging'
 import helmet from 'helmet'
 import {
   ApiMalformError,
@@ -232,6 +233,9 @@ const expressApp = ({ app }: { app: express.Application }): void => {
           // An example of req.body.body is the email body of an email that a user wishes to send
           // We should redact such content as it may contain sensitive information
           req.body.body = '[REDACTED]'
+        }
+        if (propName === 'body') {
+          return redactSensitiveBodyFields(req.body)
         }
         return (req as any)[propName]
       },
