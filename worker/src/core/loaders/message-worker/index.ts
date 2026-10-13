@@ -231,7 +231,14 @@ const finalize = tracer.wrap(
           action: 'finalize',
         })
         // for each campaign id, send email confirmation
-        void sendFinalizedNotification(campaignId)
+        sendFinalizedNotification(campaignId).catch((err) => {
+          logger.error({
+            message: 'Failed to send finalized notification',
+            campaignId,
+            error: err,
+            action: 'finalize',
+          })
+        })
       })
     })
   }
