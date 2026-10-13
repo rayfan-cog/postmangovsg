@@ -2,6 +2,7 @@ import cors from 'cors'
 import { isCelebrate } from 'celebrate'
 import express, { Request, Response, NextFunction } from 'express'
 import expressWinston from 'express-winston'
+import type winston from 'winston'
 import * as Sentry from '@sentry/node'
 import tracer from 'dd-trace'
 
@@ -197,7 +198,8 @@ const expressApp = ({ app }: { app: express.Application }): void => {
   app.use(
     expressWinston.logger({
       msg: `Incoming HTTP Request {{req.method}} {{req.url}}`,
-      winstonInstance: logger,
+      // express-winston only calls `.log` on the instance
+      winstonInstance: logger as unknown as winston.Logger,
       ignoredRoutes: ['/'],
       // The callback carries a single-use code and state in its body. Ignore
       // the whole request, including any query string in req.url or the log message.

@@ -25,20 +25,22 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 })
 
-logger.stream = {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  write: (message: string, _encoding: any): void => {
+export interface LogStream {
+  write: (message: string) => void
+}
+
+const loggerStream: LogStream = {
+  write: (message: string): void => {
     // use the 'info' log level so the output will be picked up by both transports
     logger.info(message)
   },
 }
 
-export const getStream = () => {
-  return logger.stream
+export const getStream = (): LogStream => {
+  return loggerStream
 }
 
-export const addTransport = (transport: any) => {
+export const addTransport = (transport: winston.transport): void => {
   logger.add(transport)
 }
 
@@ -50,20 +52,34 @@ const truncate = (message: string, length: number, suffix = true): string => {
     ? `${message.substring(0, length)}${suffix ? '...<TRUNCATED>' : ''}`
     : message
 }
-export const loggerWithLabel = (module: NodeModule): any => {
+export interface LogMeta {
+  message?: string
+  error?: unknown
+  action?: string
+  [key: string]: unknown
+}
+
+export interface LabeledLogger {
+  log: (logMeta: LogMeta & { level: string; message: string }) => void
+  info: (logMeta: LogMeta) => void
+  error: (logMeta: LogMeta) => void
+  debug: (logMeta: LogMeta) => void
+  warn: (logMeta: LogMeta) => void
+}
+
+export const loggerWithLabel = (module: NodeModule): LabeledLogger => {
   const label = getModuleLabel(module)
   return {
-    log: (logMeta: any): winston.Logger => logger.log({ label, ...logMeta }),
-    info: (logMeta: any): winston.Logger => logger.info({ label, ...logMeta }),
-    error: (logMeta: any): winston.Logger => {
+    log: (logMeta) => logger.log({ label, ...logMeta }),
+    info: (logMeta) => logger.info({ label, ...logMeta }),
+    error: (logMeta) => {
       if (logMeta.error && logMeta.error instanceof Error) {
-        logMeta.error = truncate(logMeta.error.stack, 400)
+        logMeta.error = truncate(logMeta.error.stack ?? '', 400)
       }
       return logger.error({ label, ...logMeta })
     },
 
-    debug: (logMeta: any): winston.Logger =>
-      logger.debug({ label, ...logMeta }),
-    warn: (logMeta: any): winston.Logger => logger.warn({ label, ...logMeta }),
+    debug: (logMeta) => logger.debug({ label, ...logMeta }),
+    warn: (logMeta) => logger.warn({ label, ...logMeta }),
   }
 }
