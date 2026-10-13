@@ -42,8 +42,8 @@ jobs:
          languages: ${{matrix.language}}
          build-mode: ${{matrix.build-mode}}
 
-         # Pull config from https://github.com/opengovsg/codeql-config/blob/prod/codeql-config.yml
-         config-file: opengovsg/codeql-config/codeql-config.yml@prod
+         # Local copy of https://github.com/opengovsg/codeql-config/blob/prod/codeql-config.yml
+         config-file: ./.github/codeql/codeql-config.yml
 
      - name: Perform CodeQL Analysis
        uses: github/codeql-action/analyze@v3
