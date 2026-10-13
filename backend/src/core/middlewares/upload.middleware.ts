@@ -1,8 +1,18 @@
-import { Request, Response, NextFunction } from 'express'
+import { Request, Response, NextFunction, Handler } from 'express'
 
 import { loggerWithLabel } from '@core/logger'
 import { UploadService, MultipartUploadService } from '@core/services'
-import { ApiInternalServerError } from '@core/errors/rest-api.errors'
+import {
+  ApiInternalServerError,
+  ApiInvalidTemplateError,
+} from '@core/errors/rest-api.errors'
+import {
+  InvalidRecipientError,
+  MissingTemplateKeysError,
+  RecipientColumnMissing,
+  UserError,
+} from '@core/errors'
+import { AllowedTemplateTypes, UploadData } from '@core/interfaces'
 
 const logger = loggerWithLabel(module)
 
@@ -100,8 +110,85 @@ const completeMultipart = async (
   }
 }
 
+export const MISSING_TEMPLATE_MESSAGE =
+  'Error: No message template found. Please create a message template before uploading a recipient file.'
+
+const USER_ERRORS = [
+  UserError,
+  RecipientColumnMissing,
+  MissingTemplateKeysError,
+  InvalidRecipientError,
+]
+
+interface UploadCompleteHandlerOptions<Template extends AllowedTemplateTypes> {
+  action?: string
+  getFilledTemplate: (campaignId: number) => Promise<Template | null>
+  enqueueUpload: (data: UploadData<Template>) => Promise<string>
+  missingTemplateError: () => Error
+  getEtag?: (req: Request, res: Response) => string
+  getResponseBody?: (req: Request) => object
+}
+
+/**
+ * Creates a handler that completes a recipient list upload for a channel.
+ * If a template has not yet been uploaded, do not write to the message logs, but prompt the user to upload a template first.
+ * Otherwise, store the temp filename and enqueue the upload, whose columns are checked against the template's attributes.
+ */
+const makeUploadCompleteHandler = <Template extends AllowedTemplateTypes>({
+  action = 'uploadCompleteHandler',
+  getFilledTemplate,
+  enqueueUpload,
+  missingTemplateError,
+  getEtag = (req) => req.body.etag,
+  getResponseBody = (req) => ({ id: req.params.campaignId }),
+}: UploadCompleteHandlerOptions<Template>): Handler => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> => {
+    const { campaignId } = req.params
+    const { transaction_id: transactionId, filename } = req.body
+    const logMeta = { campaignId, action }
+
+    try {
+      const { s3Key } = UploadService.extractParamsFromJwt(transactionId)
+
+      const template = await getFilledTemplate(+campaignId)
+      if (template === null) {
+        throw missingTemplateError()
+      }
+
+      await UploadService.storeS3TempFilename(+campaignId, filename)
+      logger.info({ message: 'Stored temporary S3 filename', ...logMeta })
+
+      await enqueueUpload({
+        campaignId: +campaignId,
+        template,
+        s3Key,
+        etag: getEtag(req, res),
+        filename,
+      })
+
+      // Return early because bulk insert is slow
+      return res.status(202).json(getResponseBody(req))
+    } catch (err) {
+      logger.error({
+        message: 'Failed to complete upload to s3',
+        error: err,
+        ...logMeta,
+      })
+      if (USER_ERRORS.some((errType) => err instanceof errType)) {
+        throw new ApiInvalidTemplateError((err as Error).message)
+      }
+      return next(err)
+    }
+  }
+}
+
 export const UploadMiddleware = {
   uploadStartHandler,
   startMultipartUpload,
   completeMultipart,
+  makeUploadCompleteHandler,
 }

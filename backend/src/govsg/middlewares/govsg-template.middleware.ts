@@ -1,16 +1,10 @@
 import { ChannelType } from '@core/constants'
 import {
-  InvalidRecipientError,
-  MissingTemplateKeysError,
-  RecipientColumnMissing,
-  UserError,
-} from '@core/errors'
-import {
   ApiAuthenticationError,
   ApiInvalidTemplateError,
   ApiNotFoundError,
 } from '@core/errors/rest-api.errors'
-import { loggerWithLabel } from '@core/logger'
+import { UploadMiddleware } from '@core/middlewares/upload.middleware'
 import { Campaign, Statistic } from '@core/models'
 import { CampaignService, StatsService, UploadService } from '@core/services'
 import { GovsgTemplatesAccess } from '@govsg/models'
@@ -21,9 +15,7 @@ import {
   GovsgTemplateLanguageMetadata,
 } from '@govsg/models/govsg-template'
 import { GovsgTemplateService } from '@govsg/services'
-import { NextFunction, Request, Response } from 'express'
-
-const logger = loggerWithLabel(module)
+import { Request, Response } from 'express'
 
 const convertMultilingualSupportToResponse = (
   multilingualSupport: Array<GovsgTemplateLanguageMetadata>
@@ -158,59 +150,16 @@ export async function pickTemplateForCampaign(
   })
 }
 
-export async function uploadCompleteHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<Response | void> {
-  const campaignId = +req.params.campaignId
-  const { transaction_id: transactionId, filename, etag } = req.body
-  const logMeta = { campaignId, action: 'uploadCompleteHandler' }
-
-  try {
-    const { s3Key } = UploadService.extractParamsFromJwt(transactionId)
-
-    const template = await GovsgTemplateService.getFilledTemplate(campaignId)
-    if (!template) {
-      throw new ApiInvalidTemplateError(
-        'No template assigned to the campaign yet.'
-      )
-    }
-
-    await UploadService.storeS3TempFilename(campaignId, filename)
-    logger.info({ message: 'Stored temporary S3 filename', ...logMeta })
-
-    await UploadService.enqueueUpload({
-      channelType: ChannelType.Govsg,
-      data: {
-        campaignId,
-        template,
-        etag,
-        s3Key,
-        filename,
-      },
-    })
-
-    return res.status(202).json({ id: campaignId })
-  } catch (err) {
-    logger.error({
-      message: 'Failed to complete upload to s3',
-      error: err,
-      ...logMeta,
-    })
-    const userErrors = [
-      UserError,
-      RecipientColumnMissing,
-      MissingTemplateKeysError,
-      InvalidRecipientError,
-    ]
-
-    if (userErrors.some((errType) => err instanceof errType)) {
-      throw new ApiInvalidTemplateError((err as Error).message)
-    }
-    return next(err)
+export const uploadCompleteHandler = UploadMiddleware.makeUploadCompleteHandler(
+  {
+    getFilledTemplate: GovsgTemplateService.getFilledTemplate,
+    enqueueUpload: (data) =>
+      UploadService.enqueueUpload({ channelType: ChannelType.Govsg, data }),
+    missingTemplateError: () =>
+      new ApiInvalidTemplateError('No template assigned to the campaign yet.'),
+    getResponseBody: (req) => ({ id: +req.params.campaignId }),
   }
-}
+)
 
 export async function pollCsvStatusHandler(
   req: Request,

@@ -1,17 +1,15 @@
 import { NextFunction, Request, Response } from 'express'
-import {
-  HydrationError,
-  InvalidRecipientError,
-  MissingTemplateKeysError,
-  RecipientColumnMissing,
-  UserError,
-} from '@core/errors'
+import { HydrationError } from '@core/errors'
 import { TemplateError } from '@shared/templating'
 import { StatsService, UploadService } from '@core/services'
 import { SmsService, SmsTemplateService } from '@sms/services'
 import { StoreTemplateOutput } from '@sms/interfaces'
 import { loggerWithLabel } from '@core/logger'
 import { ApiInvalidTemplateError } from '@core/errors/rest-api.errors'
+import {
+  MISSING_TEMPLATE_MESSAGE,
+  UploadMiddleware,
+} from '@core/middlewares/upload.middleware'
 
 const logger = loggerWithLabel(module)
 /**
@@ -80,71 +78,11 @@ const storeTemplate = async (
   }
 }
 
-/**
- * Downloads the file from s3 and checks that its columns match the attributes provided in the template.
- * If a template has not yet been uploaded, do not write to the message logs, but prompt the user to upload a template first.
- * If the template and csv do not match, prompt the user to upload a new file.
- * @param req
- * @param res
- * @param next
- */
-const uploadCompleteHandler = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<Response | void> => {
-  const { campaignId } = req.params
-
-  // extract s3Key from transactionId
-  const { transaction_id: transactionId, filename, etag } = req.body
-  const logMeta = { campaignId, action: 'uploadCompleteHandler' }
-
-  try {
-    const { s3Key } = UploadService.extractParamsFromJwt(transactionId)
-
-    // check if template exists
-    const template = await SmsTemplateService.getFilledTemplate(+campaignId)
-    if (template === null) {
-      throw new Error(
-        'Error: No message template found. Please create a message template before uploading a recipient file.'
-      )
-    }
-
-    // Store temp filename
-    await UploadService.storeS3TempFilename(+campaignId, filename)
-
-    logger.info({ message: 'Stored temporary S3 filename', ...logMeta })
-
-    // Enqueue upload job to be processed
-    await SmsTemplateService.enqueueUpload({
-      campaignId: +campaignId,
-      template,
-      s3Key,
-      etag,
-      filename,
-    })
-
-    // Return early because bulk insert is slow
-    res.status(202).json({ id: campaignId })
-  } catch (err) {
-    logger.error({
-      message: 'Failed to complete upload to s3',
-      error: err,
-      ...logMeta,
-    })
-    const userErrors = [
-      UserError,
-      RecipientColumnMissing,
-      MissingTemplateKeysError,
-      InvalidRecipientError,
-    ]
-
-    if (userErrors.some((errType) => err instanceof errType)) {
-      throw new ApiInvalidTemplateError((err as Error).message)
-    }
-    return next(err)
-  }
-}
+const uploadCompleteHandler = UploadMiddleware.makeUploadCompleteHandler({
+  getFilledTemplate: SmsTemplateService.getFilledTemplate,
+  enqueueUpload: SmsTemplateService.enqueueUpload,
+  missingTemplateError: () => new Error(MISSING_TEMPLATE_MESSAGE),
+})
 
 /*
  * Returns status of csv processing
