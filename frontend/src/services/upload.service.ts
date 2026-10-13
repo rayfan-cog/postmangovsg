@@ -65,8 +65,8 @@ export async function uploadFileWithPresignedUrl(
   uploadedFile: File,
   presignedUrl: string
 ): Promise<string> {
+  const md5 = await getMd5(uploadedFile)
   try {
-    const md5 = await getMd5(uploadedFile)
     const response = await axios.put(presignedUrl, uploadedFile, {
       headers: {
         'Content-Type': uploadedFile.type,
@@ -91,9 +91,9 @@ export async function getPresignedUrl({
   campaignId: number
   uploadedFile: File
 }): Promise<PresignedUrlResponse> {
+  const mimeType = await getMimeType(uploadedFile)
+  const md5 = await getMd5(uploadedFile)
   try {
-    const mimeType = await getMimeType(uploadedFile)
-    const md5 = await getMd5(uploadedFile)
     const response = await axios.get(`/campaign/${campaignId}/upload/start`, {
       params: {
         mime_type: mimeType,
