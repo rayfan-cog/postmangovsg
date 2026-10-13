@@ -374,7 +374,7 @@ const processUpload = <Template extends AllowedTemplateTypes>(
           )
         } catch (e) {
           await transaction.rollback()
-          if ((e as any).code !== 'NoSuchKey') {
+          if ((e as Error).name !== 'NoSuchKey') {
             bail(e as Error)
           } else {
             throw e
@@ -383,7 +383,7 @@ const processUpload = <Template extends AllowedTemplateTypes>(
       }, RETRY_CONFIG)
     } catch (err) {
       // Precondition failure is caused by ETag mismatch. Convert to a more user-friendly error message.
-      if ((err as any).code === 'PreconditionFailed') {
+      if ((err as Error).name === 'PreconditionFailed') {
         ;(err as Error).message =
           'Please try again. Error processing the recipient list. Please contact the Postman team if this problem persists.'
       }
