@@ -430,7 +430,10 @@ const sendFinalizedNotification = async (campaignId: number): Promise<void> => {
  */
 const createAndResumeWorker = (): Promise<void> => {
   return assignment(postmanConnection, workerId)
-    .then(() => {
+    .then((assigned) => {
+      if (!assigned) {
+        throw new Error(`Failed to assign worker ${workerId}`)
+      }
       return postmanConnection.query('SELECT resume_worker(:worker_id);', {
         replacements: { worker_id: workerId },
         type: QueryTypes.SELECT,
