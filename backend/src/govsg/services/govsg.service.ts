@@ -289,5 +289,12 @@ export async function processSingleRecipientCampaign(
     await transaction?.commit()
   } catch (e) {
     await transaction?.rollback()
+    logger.error({
+      message: 'Failed to process single recipient campaign',
+      campaignId,
+      error: e,
+      action: 'processSingleRecipientCampaign',
+    })
+    throw e
   }
 }
