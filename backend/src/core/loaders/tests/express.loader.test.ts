@@ -18,11 +18,15 @@ addTransport(
 )
 
 const handledBodies: unknown[] = []
+const bodiesAfterResponse: unknown[] = []
 const app = express()
 app.use(express.json())
 app.use(createRequestLogger())
 app.post('/v1/*', (req, res) => {
   handledBodies.push(JSON.parse(JSON.stringify(req.body)))
+  res.on('finish', () =>
+    bodiesAfterResponse.push(JSON.parse(JSON.stringify(req.body)))
+  )
   res.json(req.body)
 })
 
@@ -45,6 +49,7 @@ const findRequestLog = async (
 beforeEach(() => {
   logLines.length = 0
   handledBodies.length = 0
+  bodiesAfterResponse.length = 0
 })
 
 test('redacts login OTP and email from the request log', async () => {
@@ -115,4 +120,23 @@ test('redacts Telegram bot token and email body content', async () => {
   })
   expect(line).not.toContain('FAKE_BOT_TOKEN')
   expect(line).not.toContain('secret email content')
+})
+
+test('redacts email body and attachment data without mutating req.body', async () => {
+  const body = {
+    subject: 'Hello',
+    body: 'secret email content',
+    attachments: [{ filename: 'a.txt', data: 'FAKE_ATTACHMENT_DATA' }],
+  }
+  await request(app).post('/v1/transactional/email/send').send(body)
+
+  const { line, req } = await findRequestLog('/v1/transactional/email/send')
+  expect(req.body).toEqual({
+    subject: 'Hello',
+    body: '[REDACTED]',
+    attachments: [{ filename: 'a.txt', data: '[REDACTED]' }],
+  })
+  expect(line).not.toContain('secret email content')
+  expect(line).not.toContain('FAKE_ATTACHMENT_DATA')
+  expect(bodiesAfterResponse).toEqual([body])
 })

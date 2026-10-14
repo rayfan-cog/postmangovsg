@@ -40,6 +40,29 @@ const origin = (v: string): string | RegExp => {
   return v
 }
 
+// Returns a redacted copy of one body field for the request log; req.body is left intact
+const redactRequestBodyField = (
+  body: Record<string, any>,
+  key: string
+): unknown => {
+  if (key === 'attachments' && body.attachments) {
+    // truncate attachment data so the whole file won't get logged and take
+    // up our disk space
+    return redactSensitiveBodyFields(
+      ensureAttachmentsFieldIsArray(body.attachments).map((attachment) => ({
+        ...attachment,
+        data: '[REDACTED]',
+      }))
+    )
+  }
+  if (key === 'body' && body.body) {
+    // An example of req.body.body is the email body of an email that a user wishes to send
+    // We should redact such content as it may contain sensitive information
+    return '[REDACTED]'
+  }
+  return redactSensitiveBodyField(body, key)
+}
+
 export const createRequestLogger = (): express.Handler =>
   expressWinston.logger({
     msg: `Incoming HTTP Request {{req.method}} {{req.url}}`,
@@ -54,7 +77,7 @@ export const createRequestLogger = (): express.Handler =>
       if (!(req instanceof IncomingMessage)) {
         // express-winston rebuilds the logged body by calling this filter
         // with req.body and each body key, discarding the 'body' result below
-        return redactSensitiveBodyField(req, propName)
+        return redactRequestBodyField(req, propName)
       }
       // If body is undefined or null, normalize to empty object for safe access
       req.body = req.body || {}
@@ -68,24 +91,13 @@ export const createRequestLogger = (): express.Handler =>
         // keep header to distinguish if API call is made via cookie
         req.headers.cookie = '[REDACTED]'
       }
-      if (propName === 'body' && req.body.attachments) {
-        const { attachments } = req.body
-        req.body.attachments = ensureAttachmentsFieldIsArray(attachments).map(
-          (attachment) => ({
-            // truncate attachment data so the whole file won't get logged and take
-            // up our disk space
-            ...attachment,
-            data: '[REDACTED]',
-          })
-        )
-      }
-      if (propName === 'body' && req.body.body) {
-        // An example of req.body.body is the email body of an email that a user wishes to send
-        // We should redact such content as it may contain sensitive information
-        req.body.body = '[REDACTED]'
-      }
       if (propName === 'body') {
-        return redactSensitiveBodyFields(req.body)
+        return Object.fromEntries(
+          Object.keys(req.body).map((key) => [
+            key,
+            redactRequestBodyField(req.body, key),
+          ])
+        )
       }
       return (req as any)[propName]
     },
