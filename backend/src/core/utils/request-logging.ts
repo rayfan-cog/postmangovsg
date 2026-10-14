@@ -50,3 +50,10 @@ export const redactSensitiveBodyFields = (value: unknown): unknown => {
     ])
   )
 }
+
+/** Redacts a single top-level body field, as express-winston logs bodies key by key. */
+export const redactSensitiveBodyField = (
+  body: Record<string, unknown>,
+  key: string
+): unknown =>
+  isSensitiveBodyKey(key) ? REDACTED : redactSensitiveBodyFields(body[key])
