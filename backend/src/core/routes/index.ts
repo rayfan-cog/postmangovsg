@@ -12,7 +12,7 @@ import { loggerWithLabel } from '@core/logger'
 
 // Core routes
 import { InitAuthRoutes } from './auth.routes'
-import protectedMailRoutes from './protected.routes'
+import { InitProtectedRoutes } from './protected.routes'
 import campaignRoutes from './campaign.routes'
 import { InitSettingsRoute } from './settings.routes'
 import statsRoutes from './stats.routes'
@@ -64,6 +64,7 @@ export const InitV1Route = (app: Application): Router => {
     authMiddleware,
     (app as any).redisService
   )
+  const protectedMailRoutes = InitProtectedRoutes((app as any).redisService)
   const settingsMiddleware = InitSettingsMiddleware(
     (app as any).credentialService
   )
