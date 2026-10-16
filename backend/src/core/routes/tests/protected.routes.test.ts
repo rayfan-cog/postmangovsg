@@ -139,6 +139,19 @@ describe('POST /protected/{id}', () => {
       expect(res.status).toBe(403)
     })
 
+    test('Invalid request bodies do not count towards the limit', async () => {
+      await createMessage()
+      for (let i = 0; i < PROTECT_VERIFY_MESSAGE_MAX_FAILURES + 5; i++) {
+        const res = await request(app)
+          .post(`/protect/${id}`)
+          .set('cf-connecting-ip', '1.1.1.1')
+          .send({})
+        expect(res.status).toBe(400)
+      }
+      const res = await attempt('def')
+      expect(res.status).toBe(200)
+    })
+
     test('Locks the message after too many failed attempts across clients', async () => {
       await createMessage()
       for (let i = 0; i < PROTECT_VERIFY_MESSAGE_MAX_FAILURES; i++) {

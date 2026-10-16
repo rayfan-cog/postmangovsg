@@ -117,9 +117,9 @@ export const InitProtectedRoutes = (redisService: RedisService): Router => {
    */
   router.post(
     '/:id',
+    celebrate(protectVerifyValidator),
     ipLimiter,
     messageLimiter,
-    celebrate(protectVerifyValidator),
     ProtectedMiddleware.verifyPasswordHash
   )
 
