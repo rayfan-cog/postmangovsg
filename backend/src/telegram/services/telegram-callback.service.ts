@@ -33,13 +33,14 @@ const verifyBotIdRegistered = async (botId: string): Promise<boolean> => {
  * Verifies that a bot token is valid and not revoked by calling Telegram's `getMe` endpoint.
  */
 const verifyBotToken = async (
+  botId: string,
   bot: Telegraf<TelegrafContext>
 ): Promise<void> => {
   try {
     await bot.telegram.getMe()
     logger.info({
       message: 'Bot token verified',
-      bot,
+      botId,
       action: 'verifyBotToken',
     })
   } catch (err) {
@@ -56,7 +57,7 @@ const handleUpdate = async (
   const bot = new Telegraf(botToken)
 
   // Verify botToken
-  await verifyBotToken(bot)
+  await verifyBotToken(botId, bot)
 
   // Attach handlers
   bot.command('start', startCommandHandler)
