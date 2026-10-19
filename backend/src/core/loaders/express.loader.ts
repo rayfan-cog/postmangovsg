@@ -13,6 +13,7 @@ import {
   isOneGovSgCallbackPath,
   redactOneGovSgSentryEvent,
 } from '@core/utils/one-gov-sg-logging'
+import { redactTelegramCallbackUrl } from '@core/utils/telegram-callback-logging'
 import helmet from 'helmet'
 import {
   ApiMalformError,
@@ -207,6 +208,10 @@ const expressApp = ({ app }: { app: express.Application }): void => {
       requestFilter: (req: Request, propName: string) => {
         // If body is undefined or null, normalize to empty object for safe access
         req.body = req.body || {}
+        if (propName === 'url' && typeof req.url === 'string') {
+          // Also redacts the {{req.url}} message, which is rendered after this filter
+          req.url = redactTelegramCallbackUrl(req.url)
+        }
         if (propName === 'headers' && req.headers.authorization) {
           // we do this instead of adding it to `headerBlacklist`
           // so we can distinguish if an API call is made via API key
